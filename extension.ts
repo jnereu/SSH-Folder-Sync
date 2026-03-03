@@ -139,8 +139,8 @@ export function activate(ctx: vscode.ExtensionContext) {
     filesProv.refresh();
   }));
 
-  // --- enviar ficheiro ---
-  ctx.subscriptions.push(vscode.commands.registerCommand('sshSync.uploadFile', async (item?: FileItem) => {
+  // --- enviar ficheiro usa o caminho local---
+ctx.subscriptions.push(vscode.commands.registerCommand('sshSync.uploadFile', async (item?: FileItem | vscode.Uri) => {
     if (!activeClient || !activeConn) {
       vscode.window.showWarningMessage('sem ligação ssh activa');
       return;
@@ -149,18 +149,25 @@ export function activate(ctx: vscode.ExtensionContext) {
     let localPath: string;
     let remotePath: string;
 
-    if (item instanceof FileItem) {
+    if (item instanceof vscode.Uri) {
+      // veio do explorador nativo — uri do ficheiro
+      localPath = item.fsPath;
+      remotePath = localToRemote(localPath, activeConn);
+    } else if (item instanceof FileItem) {
       localPath  = item.localPath;
       remotePath = item.remotePath;
     } else {
-      // usa ficheiro activo no editor
+      // veio do atalho de teclado ou barra de título
       const editor = vscode.window.activeTextEditor;
       if (!editor) { vscode.window.showWarningMessage('nenhum ficheiro aberto'); return; }
       localPath  = editor.document.uri.fsPath;
       remotePath = localToRemote(localPath, activeConn);
     }
 
-    if (!remotePath) { vscode.window.showErrorMessage('não foi possível determinar caminho remoto'); return; }
+    if (!remotePath || remotePath.includes('undefined')) {
+      vscode.window.showErrorMessage(`ficheiro fora da pasta da ligação activa: ${activeConn.localPath}`);
+      return;
+    }
 
     await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: `a enviar ${path.basename(localPath)}…` },
@@ -235,6 +242,56 @@ export function activate(ctx: vscode.ExtensionContext) {
     }),
   );
 
+
+  // --- editar ligação ---
+  ctx.subscriptions.push(vscode.commands.registerCommand('sshSync.editConnection', async (item?: ConnItem) => {
+    const conn = item?.conn ?? await pickConnection(connMgr);
+    if (!conn) return;
+
+    const label = await vscode.window.showInputBox({ prompt: 'nome da ligação', value: conn.label });
+    if (!label) return;
+    const host = await vscode.window.showInputBox({ prompt: 'host ou ip', value: conn.host });
+    if (!host) return;
+    const portStr = await vscode.window.showInputBox({ prompt: 'porta ssh', value: String(conn.port) });
+    const port = parseInt(portStr || '22', 10);
+    const username = await vscode.window.showInputBox({ prompt: 'utilizador', value: conn.username });
+    if (!username) return;
+    const changePw = await vscode.window.showQuickPick(['manter password actual', 'alterar password'], { placeHolder: 'password' });
+    if (!changePw) return;
+    if (changePw === 'alterar password') {
+      const pw = await vscode.window.showInputBox({ prompt: 'nova password', password: true });
+      if (pw) await connMgr.savePassword(conn.id, pw);
+    }
+    const remotePath = await vscode.window.showInputBox({ prompt: 'pasta remota', value: conn.remotePath });
+    if (!remotePath) return;
+
+    const updated = { ...conn, label, host, port, username, remotePath };
+    await connMgr.save(updated);
+    connProv.refresh(connMgr.getAll(), activeConn?.id ?? null);
+    vscode.window.showInformationMessage(`ligação "${label}" actualizada`);
+  }));
+
+  // --- remover ligação ---
+  ctx.subscriptions.push(vscode.commands.registerCommand('sshSync.removeConnection', async (item?: ConnItem) => {
+    const conn = item?.conn ?? await pickConnection(connMgr);
+    if (!conn) return;
+
+    const confirm = await vscode.window.showWarningMessage(
+      `remover ligação "${conn.label}"?`, { modal: true }, 'remover',
+    );
+    if (confirm !== 'remover') return;
+
+    // desliga se for a activa
+    if (activeConn?.id === conn.id) {
+      activeClient?.disconnect();
+      setConnected(null, null);
+    }
+
+    await connMgr.remove(conn.id);
+    connProv.refresh(connMgr.getAll(), activeConn?.id ?? null);
+    vscode.window.showInformationMessage(`ligação "${conn.label}" removida`);
+  }));
+
   // desliga ao fechar janela
   ctx.subscriptions.push(
     new vscode.Disposable(() => { activeClient?.disconnect(); }),
@@ -245,6 +302,18 @@ export function activate(ctx: vscode.ExtensionContext) {
 function localToRemote(localPath: string, conn: SshConnection): string {
   const rel = path.relative(conn.localPath, localPath);
   return `${conn.remotePath}/${rel}`.replace(/\\/g, '/');
+}
+
+
+// helper: mostra lista de ligações para escolher
+async function pickConnection(connMgr: import('./connectionManager').ConnectionManager) {
+  const list = connMgr.getAll();
+  if (!list.length) { vscode.window.showWarningMessage('sem ligações configuradas'); return undefined; }
+  const pick = await vscode.window.showQuickPick(
+    list.map(c => ({ label: c.label, description: `${c.username}@${c.host}`, conn: c })),
+    { placeHolder: 'escolhe uma ligação' },
+  );
+  return pick?.conn;
 }
 
 export function deactivate() {
