@@ -3,19 +3,61 @@
   "displayName": "SSH Folder Sync",
   "description": "réplica local de pastas ssh com sincronização automática",
   "version": "0.1.0",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Other"],
-  "activationEvents": ["onStartupFinished"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      { "command": "sshSync.connect",      "title": "SSH Sync: ligar a servidor" },
-      { "command": "sshSync.disconnect",   "title": "SSH Sync: desligar" },
-      { "command": "sshSync.uploadFile",   "title": "SSH Sync: enviar ficheiro" },
-      { "command": "sshSync.downloadFile", "title": "SSH Sync: descarregar ficheiro" },
-      { "command": "sshSync.diffFile",     "title": "SSH Sync: comparar com remoto" },
-      { "command": "sshSync.refresh",      "title": "SSH Sync: actualizar explorador", "icon": "$(refresh)" },
-      { "command": "sshSync.addConnection","title": "SSH Sync: nova ligação", "icon": "$(add)" }
+      {
+        "command": "sshSync.connect",
+        "title": "SSH Sync: ligar a servidor"
+      },
+      {
+        "command": "sshSync.disconnect",
+        "title": "SSH Sync: desligar"
+      },
+      {
+        "command": "sshSync.uploadFile",
+        "title": "SSH Sync: enviar para servidor"
+      },
+      {
+        "command": "sshSync.downloadFile",
+        "title": "SSH Sync: descarregar do servidor"
+      },
+      {
+        "command": "sshSync.diffFile",
+        "title": "SSH Sync: comparar com remoto"
+      },
+      {
+        "command": "sshSync.refresh",
+        "title": "SSH Sync: actualizar explorador",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sshSync.addConnection",
+        "title": "SSH Sync: nova ligação",
+        "icon": "$(add)"
+      },
+      {
+        "command": "sshSync.editConnection",
+        "title": "SSH Sync: editar ligação"
+      },
+      {
+        "command": "sshSync.removeConnection",
+        "title": "SSH Sync: remover ligação"
+      },
+      {
+        "command": "sshSync.disconnect",
+        "title": "SSH Sync: desligar",
+        "icon": "$(debug-disconnect)"
+      }
     ],
     "viewsContainers": {
       "activitybar": [
@@ -28,8 +70,14 @@
     },
     "views": {
       "sshSyncContainer": [
-        { "id": "sshSyncConnections", "name": "Ligações" },
-        { "id": "sshSyncFiles",       "name": "Ficheiros remotos" }
+        {
+          "id": "sshSyncConnections",
+          "name": "Ligações"
+        },
+        {
+          "id": "sshSyncFiles",
+          "name": "Ficheiros remotos"
+        }
       ]
     },
     "menus": {
@@ -46,13 +94,74 @@
         }
       ],
       "view/item/context": [
-        { "command": "sshSync.uploadFile",   "when": "viewItem == localFile" },
-        { "command": "sshSync.downloadFile", "when": "viewItem == remoteFile" },
-        { "command": "sshSync.diffFile",     "when": "viewItem == remoteFile || viewItem == localFile" }
+        {
+          "command": "sshSync.uploadFile",
+          "when": "viewItem == localFile"
+        },
+        {
+          "command": "sshSync.downloadFile",
+          "when": "viewItem == remoteFile"
+        },
+        {
+          "command": "sshSync.diffFile",
+          "when": "viewItem == remoteFile || viewItem == localFile"
+        },
+        {
+          "command": "sshSync.connect",
+          "when": "viewItem == inactiveConn",
+          "group": "1_conn@1"
+        },
+        {
+          "command": "sshSync.disconnect",
+          "when": "viewItem == activeConn",
+          "group": "1_conn@1"
+        },
+        {
+          "command": "sshSync.editConnection",
+          "when": "viewItem == activeConn || viewItem == inactiveConn",
+          "group": "2_manage@1"
+        },
+        {
+          "command": "sshSync.removeConnection",
+          "when": "viewItem == activeConn || viewItem == inactiveConn",
+          "group": "2_manage@2"
+        }
       ],
       "editor/title": [
-        { "command": "sshSync.uploadFile",   "group": "navigation", "when": "sshSync.connected" },
-        { "command": "sshSync.diffFile",     "group": "navigation", "when": "sshSync.connected" }
+        {
+          "command": "sshSync.uploadFile",
+          "group": "navigation",
+          "when": "sshSync.connected"
+        },
+        {
+          "command": "sshSync.diffFile",
+          "group": "navigation",
+          "when": "sshSync.connected"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "sshSync.uploadFile",
+          "when": "sshSync.connected && !explorerResourceIsFolder",
+          "group": "sshSync@1"
+        },
+        {
+          "command": "sshSync.diffFile",
+          "when": "sshSync.connected && !explorerResourceIsFolder",
+          "group": "sshSync@2"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "sshSync.uploadFile",
+          "when": "sshSync.connected",
+          "group": "sshSync@1"
+        },
+        {
+          "command": "sshSync.diffFile",
+          "when": "sshSync.connected",
+          "group": "sshSync@2"
+        }
       ]
     },
     "configuration": {
