@@ -1,0 +1,93 @@
+{
+  "name": "ssh-folder-sync",
+  "displayName": "SSH Folder Sync",
+  "description": "réplica local de pastas ssh com sincronização automática",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "sshSync.connect",      "title": "SSH Sync: ligar a servidor" },
+      { "command": "sshSync.disconnect",   "title": "SSH Sync: desligar" },
+      { "command": "sshSync.uploadFile",   "title": "SSH Sync: enviar ficheiro" },
+      { "command": "sshSync.downloadFile", "title": "SSH Sync: descarregar ficheiro" },
+      { "command": "sshSync.diffFile",     "title": "SSH Sync: comparar com remoto" },
+      { "command": "sshSync.refresh",      "title": "SSH Sync: actualizar explorador", "icon": "$(refresh)" },
+      { "command": "sshSync.addConnection","title": "SSH Sync: nova ligação", "icon": "$(add)" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sshSyncContainer",
+          "title": "SSH Sync",
+          "icon": "$(remote-explorer)"
+        }
+      ]
+    },
+    "views": {
+      "sshSyncContainer": [
+        { "id": "sshSyncConnections", "name": "Ligações" },
+        { "id": "sshSyncFiles",       "name": "Ficheiros remotos" }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "sshSync.addConnection",
+          "when": "view == sshSyncConnections",
+          "group": "navigation"
+        },
+        {
+          "command": "sshSync.refresh",
+          "when": "view == sshSyncFiles",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        { "command": "sshSync.uploadFile",   "when": "viewItem == localFile" },
+        { "command": "sshSync.downloadFile", "when": "viewItem == remoteFile" },
+        { "command": "sshSync.diffFile",     "when": "viewItem == remoteFile || viewItem == localFile" }
+      ],
+      "editor/title": [
+        { "command": "sshSync.uploadFile",   "group": "navigation", "when": "sshSync.connected" },
+        { "command": "sshSync.diffFile",     "group": "navigation", "when": "sshSync.connected" }
+      ]
+    },
+    "configuration": {
+      "title": "SSH Folder Sync",
+      "properties": {
+        "sshSync.localBasePath": {
+          "type": "string",
+          "default": "",
+          "description": "pasta local base para réplicas ssh"
+        },
+        "sshSync.autoSyncOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "enviar automaticamente ao guardar"
+        },
+        "sshSync.connections": {
+          "type": "array",
+          "default": [],
+          "description": "lista de ligações ssh guardadas"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p ."
+  },
+  "dependencies": {
+    "ssh2": "^1.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ssh2": "^1.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
